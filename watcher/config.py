@@ -27,6 +27,10 @@ render_dpi = 300
 watch =
 done =
 error =
+
+[gui]
+; system | light | dark
+appearance = system
 """
 
 # config.ini가 없으면 기본값으로 생성
@@ -41,6 +45,26 @@ WATCH_DIR = _ini.get("folder", "watch", fallback="") or os.path.join(BASE_DIR, "
 DONE_DIR = _ini.get("folder", "done", fallback="") or os.path.join(BASE_DIR, "done")
 ERROR_DIR = _ini.get("folder", "error", fallback="") or os.path.join(BASE_DIR, "error")
 PRINTER_NAME = _ini.get("printer", "name", fallback="SLK TS200")
+
+
+def get_appearance() -> str:
+    p = configparser.ConfigParser()
+    p.read(INI_PATH, encoding="utf-8")
+    value = p.get("gui", "appearance", fallback="system").strip().lower()
+    return value if value in {"system", "light", "dark"} else "system"
+
+
+def set_appearance(value: str) -> None:
+    value = (value or "system").strip().lower()
+    if value not in {"system", "light", "dark"}:
+        value = "system"
+    p = configparser.ConfigParser()
+    p.read(INI_PATH, encoding="utf-8")
+    if not p.has_section("gui"):
+        p.add_section("gui")
+    p.set("gui", "appearance", value)
+    with open(INI_PATH, "w", encoding="utf-8") as f:
+        p.write(f)
 LABEL_WIDTH_MM = 72
 PRINTER_DPI = _ini.getint("printer", "dpi", fallback=203)
 RENDER_DPI = _ini.getint("printer", "render_dpi", fallback=300)

@@ -1,3 +1,8 @@
+import fonts
+
+# GUI 모듈 import 전에 폰트를 프로세스에 등록 (Windows: Pretendard, 그 외 폴백)
+fonts.register()
+
 from gui import WatcherApp
 
 
