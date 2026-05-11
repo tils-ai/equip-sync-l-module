@@ -21,7 +21,7 @@ jobs:
       - name: Set up Python
         uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5.6.0
         with:
-          python-version: "3.11"
+          python-version: "3.12"
 
       - name: Install poppler via MSYS2
         id: poppler
@@ -40,7 +40,7 @@ jobs:
         run: pip install -r requirements.txt
 
       - name: Build exe
-        run: pyinstaller --onefile --name equip-sync-l --windowed --hidden-import win32print --hidden-import win32ui --hidden-import win32api --collect-data customtkinter --collect-submodules gui --add-data "${{ steps.poppler.outputs.bin }};poppler" --add-data "assets/fonts;assets/fonts" main.py
+        run: pyinstaller --onefile --windowed --hidden-import=win32print --hidden-import=win32ui --hidden-import=win32api --collect-all customtkinter --collect-submodules watcher --add-data "${{ steps.poppler.outputs.bin }};poppler" --add-data "assets/fonts;assets/fonts" --name equip-sync-l main.py
 
       - name: Rename artifact (버전 포함)
         shell: pwsh
