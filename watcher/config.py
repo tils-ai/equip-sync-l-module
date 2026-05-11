@@ -22,10 +22,17 @@ dpi = 203
 render_dpi = 300
 
 [folder]
-; spec §11.5 통일 — 비워두면 %LOCALAPPDATA%\dps-store-printer\incoming 등으로 자동 생성
+; spec §11.5 통일 — 비워두면 exe 옆 incoming/ 등으로 자동 생성
 watch =
 done =
 error =
+
+[api]
+; dps-store API 풀링 (v3.0에서 watcher+agent 통합)
+tenant =
+api_key =
+base_url = https://store.dpl.shop
+poll_interval = 5
 
 [paths]
 ; spec §11.5 통일 키 (비워두면 자동)
@@ -71,6 +78,38 @@ PRINTER_NAME = _ini.get("printer", "name", fallback="SLK TS200")
 for _d in (WATCH_DIR, PROCESSING_DIR, DONE_DIR, ORIGINALS_DIR, ERROR_DIR, os.path.dirname(LOG_FILE)):
     if _d:
         os.makedirs(_d, exist_ok=True)
+
+
+# --- API 풀링 (v3.0 통합) ---
+API_TENANT = _ini.get("api", "tenant", fallback="")
+API_KEY = _ini.get("api", "api_key", fallback="")
+BASE_URL = _ini.get("api", "base_url", fallback="https://store.dpl.shop")
+POLL_INTERVAL = _ini.getint("api", "poll_interval", fallback=5)
+
+
+def _ensure_section(name: str) -> None:
+    if not _ini.has_section(name):
+        _ini.add_section(name)
+
+
+def save_api_key(api_key: str) -> None:
+    """인증 성공 후 API 키를 config.ini [api] 섹션에 기록."""
+    global API_KEY
+    API_KEY = api_key
+    _ensure_section("api")
+    _ini.set("api", "api_key", api_key)
+    with open(INI_PATH, "w", encoding="utf-8") as f:
+        _ini.write(f)
+
+
+def save_tenant(tenant: str) -> None:
+    """테넌트를 config.ini [api] 섹션에 기록."""
+    global API_TENANT
+    API_TENANT = tenant
+    _ensure_section("api")
+    _ini.set("api", "tenant", tenant)
+    with open(INI_PATH, "w", encoding="utf-8") as f:
+        _ini.write(f)
 
 
 def get_appearance() -> str:
