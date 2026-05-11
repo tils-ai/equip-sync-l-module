@@ -26,7 +26,7 @@ class PrinterApiClient:
           - pollInterval: 서버 지정 간격(초). 없으면 None → 클라이언트 백오프 사용.
         """
         resp = self.session.get(
-            f"{self.base_url}/api/printer/receipts",
+            f"{self.base_url}/api/printer/receipt",
             params={"status": "pending", "limit": limit},
             timeout=15,
         )
@@ -41,7 +41,7 @@ class PrinterApiClient:
     def mark_printed(self, receipt_id: str):
         """출력 완료 보고."""
         resp = self.session.post(
-            f"{self.base_url}/api/printer/receipts/{receipt_id}/printed",
+            f"{self.base_url}/api/printer/receipt/{receipt_id}/printed",
             timeout=10,
         )
         resp.raise_for_status()
@@ -49,7 +49,7 @@ class PrinterApiClient:
     def mark_failed(self, receipt_id: str, reason: str = ""):
         """출력 실패 보고."""
         resp = self.session.post(
-            f"{self.base_url}/api/printer/receipts/{receipt_id}/failed",
+            f"{self.base_url}/api/printer/receipt/{receipt_id}/failed",
             json={"reason": reason} if reason else None,
             timeout=10,
         )
