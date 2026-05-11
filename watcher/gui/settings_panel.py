@@ -9,17 +9,22 @@
 
 from __future__ import annotations
 
+import logging
 import os
 import subprocess
 import sys
+import threading
 from pathlib import Path
 
 import customtkinter as ctk
 
 import config
+from auth import authenticate
 from fonts import family as _font_family
 
 from . import theme
+
+logger = logging.getLogger(__name__)
 
 
 def _open_in_editor(path: Path) -> None:
@@ -157,13 +162,84 @@ class SettingsPanel(ctk.CTkFrame):
         self._api_tenant = self._entry(parent, "스토어 ID", config.API_TENANT, 0)
         self._api_base_url = self._entry(parent, "Base URL", config.BASE_URL, 1)
         self._api_poll_interval = self._entry(parent, "풀링 간격(초)", str(config.POLL_INTERVAL), 2)
-        key_label = "(미설정)" if not config.API_KEY else f"●●●●{config.API_KEY[-4:]}"
         ctk.CTkLabel(parent, text="API Key", font=ctk.CTkFont(family=_font_family(), size=11)).grid(
             row=3, column=0, sticky="w", pady=2
         )
-        ctk.CTkLabel(parent, text=key_label, font=ctk.CTkFont(family=_font_family(), size=11)).grid(
-            row=3, column=1, sticky="w", padx=(8, 0), pady=2
+        self._api_key_label = ctk.CTkLabel(
+            parent,
+            text=self._format_api_key(config.API_KEY),
+            font=ctk.CTkFont(family=_font_family(), size=11),
         )
+        self._api_key_label.grid(row=3, column=1, sticky="w", padx=(8, 0), pady=2)
+
+        actions = ctk.CTkFrame(parent, fg_color="transparent")
+        actions.grid(row=4, column=0, columnspan=2, sticky="ew", pady=(8, 0))
+        self._pair_button = ctk.CTkButton(
+            actions,
+            text="지금 인증",
+            width=120,
+            font=ctk.CTkFont(family=_font_family(), size=11, weight="bold"),
+            command=self._start_pairing,
+        )
+        self._pair_button.pack(side="right")
+
+        self._pair_msg = ctk.CTkLabel(
+            parent,
+            text="스토어 ID 입력 후 '지금 인증'을 누르면 브라우저가 열립니다",
+            anchor="w",
+            font=ctk.CTkFont(family=_font_family(), size=10),
+            text_color=theme.TEXT_MUTED,
+            wraplength=320,
+            justify="left",
+        )
+        self._pair_msg.grid(row=5, column=0, columnspan=2, sticky="ew", pady=(4, 0))
+
+    @staticmethod
+    def _format_api_key(key: str) -> str:
+        return "(미설정)" if not key else f"●●●●{key[-4:]}"
+
+    def _start_pairing(self) -> None:
+        tenant = self._api_tenant.get().strip()
+        base_url = self._api_base_url.get().strip() or "https://store.dpl.shop"
+        if not tenant:
+            self._pair_msg.configure(text="스토어 ID를 먼저 입력하세요", text_color=theme.DANGER)
+            return
+        # 입력값 우선 반영
+        config.save_tenant(tenant)
+        self._save_config_value("api", "base_url", base_url)
+        self._pair_button.configure(state="disabled", text="인증 중...")
+        self._pair_msg.configure(text="브라우저에서 승인하세요", text_color=theme.TEXT_MUTED)
+        threading.Thread(target=self._run_pairing, args=(base_url, tenant), daemon=True).start()
+
+    @staticmethod
+    def _save_config_value(section: str, key: str, value: str) -> None:
+        import configparser
+
+        p = configparser.ConfigParser()
+        p.read(config.INI_PATH, encoding="utf-8")
+        if not p.has_section(section):
+            p.add_section(section)
+        p.set(section, key, value)
+        with open(config.INI_PATH, "w", encoding="utf-8") as f:
+            p.write(f)
+
+    def _run_pairing(self, base_url: str, tenant: str) -> None:
+        try:
+            api_key = authenticate(tenant, base_url)
+            config.save_api_key(api_key)
+            self.after(0, self._on_pairing_success)
+        except Exception as e:
+            logger.exception("인증 실패")
+            self.after(0, lambda: self._on_pairing_failed(str(e)))
+
+    def _on_pairing_success(self) -> None:
+        self._api_key_label.configure(text=self._format_api_key(config.API_KEY))
+        self._pair_button.configure(state="normal", text="지금 인증")
+        self._pair_msg.configure(text="인증 완료 — Agent를 시작할 수 있습니다", text_color=theme.SUCCESS)
+
+    def _on_pairing_failed(self, reason: str) -> None:
+        self._pair_button.configure(state="normal", text="지금 인증")
+        self._pair_msg.configure(text=f"인증 실패: {reason}", text_color=theme.DANGER)
 
     # ── 프린터 ──────────────────────────────
     def _build_printer(self, parent) -> None:

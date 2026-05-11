@@ -140,8 +140,10 @@ class WatcherApp(ctk.CTk):
         self._start_watcher()
         if config.API_KEY and config.API_TENANT:
             self._start_agent()
+        elif config.API_TENANT:
+            self.control.set_agent(running=False, detail="미페어링 — Agent 시작 시 자동 인증", enabled=True)
         else:
-            self.control.set_agent(running=False, detail="미페어링 — 설정에서 페어링 필요", enabled=True)
+            self.control.set_agent(running=False, detail="스토어 ID 미설정 — 설정 패널에서 입력", enabled=False)
 
     def _start_watcher(self) -> None:
         if self._watcher_running:
@@ -227,8 +229,10 @@ class WatcherApp(ctk.CTk):
             self.control.set_agent(running=True, detail=f"풀링 중 · {config.POLL_INTERVAL}초 간격", enabled=True)
         elif config.API_KEY and config.API_TENANT:
             self.control.set_agent(running=False, detail="정지됨", enabled=True)
+        elif config.API_TENANT:
+            self.control.set_agent(running=False, detail="미페어링 — Agent 시작 시 자동 인증", enabled=True)
         else:
-            self.control.set_agent(running=False, detail="미페어링 — 설정에서 페어링 필요", enabled=False)
+            self.control.set_agent(running=False, detail="스토어 ID 미설정 — 설정 패널에서 입력", enabled=False)
 
         self.control.tick()
         self._after_id = self.after(self.REFRESH_MS, self._tick)
