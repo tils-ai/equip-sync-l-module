@@ -176,7 +176,7 @@ def _build_single(
     if order_number:
         y = draw_lr("주문번호", order_number, font_body, font_order_num, y,
                      left_fill=_GRAY)
-        y += int(2 * scale)
+        y += line_gap
     if created_at:
         y = draw_lr("일시", created_at, font_body, font_body, y,
                      left_fill=_GRAY)
@@ -210,42 +210,44 @@ def _build_single(
     y = draw_dashed_line(y)
     y += section_pad
 
-    # === 금액 ===
-    items_total = receipt.get("itemsTotal", 0)
-    shipping = receipt.get("shippingAmount", 0)
-    discount = receipt.get("discountAmount", 0)
-    total = receipt.get("totalAmount", 0)
+    # === 금액 (showAmount=False이면 생략) ===
+    show_amount = receipt.get("showAmount", True)
+    if show_amount:
+        items_total = receipt.get("itemsTotal", 0)
+        shipping = receipt.get("shippingAmount", 0)
+        discount = receipt.get("discountAmount", 0)
+        total = receipt.get("totalAmount", 0)
 
-    y = draw_lr("상품금액", format_price(items_total), font_body, font_body, y,
-                 left_fill=_GRAY)
-    if shipping:
-        y = draw_lr("배송비", format_price(shipping), font_body, font_body, y,
+        y = draw_lr("상품금액", format_price(items_total), font_body, font_body, y,
                      left_fill=_GRAY)
-    if discount:
-        y = draw_lr("할인", f"-{format_price(discount)}", font_body, font_body, y,
-                     left_fill=_GRAY)
+        if shipping:
+            y = draw_lr("배송비", format_price(shipping), font_body, font_body, y,
+                         left_fill=_GRAY)
+        if discount:
+            y = draw_lr("할인", f"-{format_price(discount)}", font_body, font_body, y,
+                         left_fill=_GRAY)
 
-    # 총 결제금액 위 실선
-    y += int(4 * scale)
-    y = draw_thin_line(y)
-    y += int(4 * scale)
+        # 총 결제금액 위 실선
+        y += int(4 * scale)
+        y = draw_thin_line(y)
+        y += int(4 * scale)
 
-    y = draw_lr("총 결제금액", format_price(total), font_total, font_total, y)
+        y = draw_lr("총 결제금액", format_price(total), font_total, font_total, y)
 
-    y += section_pad
-    y = draw_dashed_line(y)
-    y += section_pad
-
-    # === 결제 정보 ===
-    payment_method = receipt.get("paymentMethod", "")
-    payment_status = receipt.get("paymentStatus", "")
-    if payment_method or payment_status:
-        payment_value = " / ".join(filter(None, [payment_method, payment_status]))
-        y = draw_lr("결제", payment_value, font_body, font_body, y,
-                     left_fill=_GRAY)
         y += section_pad
         y = draw_dashed_line(y)
         y += section_pad
+
+        # === 결제 정보 ===
+        payment_method = receipt.get("paymentMethod", "")
+        payment_status = receipt.get("paymentStatus", "")
+        if payment_method or payment_status:
+            payment_value = " / ".join(filter(None, [payment_method, payment_status]))
+            y = draw_lr("결제", payment_value, font_body, font_body, y,
+                         left_fill=_GRAY)
+            y += section_pad
+            y = draw_dashed_line(y)
+            y += section_pad
 
     # === 예상 소요시간 (수기 기입란) ===
     draw.text((margin, y), "예상 소요시간", fill=_GRAY, font=font_small)
