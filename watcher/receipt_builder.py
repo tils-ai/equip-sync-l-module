@@ -4,16 +4,19 @@ from datetime import datetime, timezone
 
 from PIL import Image, ImageDraw, ImageFont
 
+import fonts
+
 logger = logging.getLogger(__name__)
 
-# 폰트 경로 후보
-_FONT_PATHS = [
+# 시스템 폰트 폴백 경로 (번들 Pretendard 누락 시에만 사용 — Windows 전용)
+_SYSTEM_FALLBACK_PATHS = [
     "C:/Windows/Fonts/malgun.ttf",    # 맑은 고딕
     "C:/Windows/Fonts/malgunbd.ttf",  # 맑은 고딕 Bold
     "C:/Windows/Fonts/gulim.ttc",     # 굴림
 ]
 
 _font_cache = {}
+_warned_fallback = False
 
 # 색상 (감열 프린터: 흑백만 지원, 회색은 출력 안됨)
 _BLACK = "#000000"
@@ -23,22 +26,44 @@ _RULE_GRAY = "#000000"
 
 
 def _load_font(size: int, bold: bool = False) -> ImageFont.FreeTypeFont:
-    """한글 폰트 로드. 캐시 사용."""
+    """접수증 렌더링용 폰트 로드. 캐시 사용.
+
+    1순위: 번들된 Pretendard (모든 OS에서 동일하게 동작)
+    2순위: 시스템 한글 폰트 (Windows 한정 폴백 — 첫 사용 시 경고 로그)
+    3순위: PIL 기본 비트맵 폰트 (깨져 보이므로 ERROR 로그)
+    """
+    global _warned_fallback
+
     key = (size, bold)
     if key in _font_cache:
         return _font_cache[key]
 
-    # Bold 요청 시 malgunbd.ttf 우선
-    paths = _FONT_PATHS if not bold else [_FONT_PATHS[1]] + _FONT_PATHS
-    for path in paths:
+    bundled = fonts.bundled_font_path(bold=bold)
+    if bundled is not None:
+        try:
+            font = ImageFont.truetype(str(bundled), size)
+            _font_cache[key] = font
+            return font
+        except Exception:
+            logger.exception("번들 Pretendard 로드 실패: %s", bundled)
+
+    # Bold 폴백 시 malgunbd.ttf 우선
+    fallback_paths = _SYSTEM_FALLBACK_PATHS
+    if bold:
+        fallback_paths = [_SYSTEM_FALLBACK_PATHS[1]] + _SYSTEM_FALLBACK_PATHS
+    for path in fallback_paths:
         if os.path.exists(path):
             try:
                 font = ImageFont.truetype(path, size)
+                if not _warned_fallback:
+                    logger.warning("번들 Pretendard 사용 불가 → 시스템 폰트로 폴백: %s", path)
+                    _warned_fallback = True
                 _font_cache[key] = font
                 return font
             except Exception:
                 continue
 
+    logger.error("모든 한글 폰트 로드 실패 → PIL 기본 비트맵 폰트 사용 (출력이 깨질 수 있음)")
     font = ImageFont.load_default()
     _font_cache[key] = font
     return font
@@ -192,6 +217,7 @@ def _build_single(
     y += section_pad
 
     # === 상품 목록 ===
+    show_amount = receipt.get("showAmount", True)
     items = receipt.get("items", [])
     for item in items:
         product_name = item.get("productName", "")
@@ -202,16 +228,20 @@ def _build_single(
         qty = item.get("quantity", 1)
         price = item.get("totalPrice", 0)
         detail = f"{option} × {qty}"
-        y = draw_lr(detail, format_price(price), font_item_detail, font_item_detail, y,
-                     left_fill=_GRAY, right_fill=_GRAY)
+        if show_amount:
+            y = draw_lr(detail, format_price(price), font_item_detail, font_item_detail, y,
+                         left_fill=_GRAY, right_fill=_GRAY)
+        else:
+            # 금액 미표기 모드: 옵션·수량만 좌측 정렬로 표기
+            draw.text((margin, y), detail, fill=_GRAY, font=font_item_detail)
+            y += text_height(detail, font_item_detail) + line_gap
         y += int(4 * scale)
 
     y += section_pad
     y = draw_dashed_line(y)
     y += section_pad
 
-    # === 금액 (showAmount=False이면 생략) ===
-    show_amount = receipt.get("showAmount", True)
+    # === 금액 / 결제 (showAmount=False이면 섹션 전체 생략) ===
     if show_amount:
         items_total = receipt.get("itemsTotal", 0)
         shipping = receipt.get("shippingAmount", 0)
