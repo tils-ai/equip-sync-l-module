@@ -4,3 +4,4 @@ Pillow
 pywin32
 customtkinter
 pyinstaller
+requests
