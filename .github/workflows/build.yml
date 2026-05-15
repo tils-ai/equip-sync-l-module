@@ -40,7 +40,7 @@ jobs:
         run: pip install -r requirements.txt
 
       - name: Build exe
-        run: pyinstaller --onefile --windowed --hidden-import=win32print --hidden-import=win32ui --hidden-import=win32api --collect-all customtkinter --collect-submodules watcher --add-data "${{ steps.poppler.outputs.bin }};poppler" --add-data "assets/fonts;assets/fonts" --name equip-sync-l main.py
+        run: pyinstaller --onefile --windowed --hidden-import=win32print --hidden-import=win32ui --hidden-import=win32api --hidden-import=requests --hidden-import=urllib3 --hidden-import=certifi --hidden-import=charset_normalizer --hidden-import=idna --collect-all customtkinter --collect-submodules watcher --add-data "${{ steps.poppler.outputs.bin }};poppler" --add-data "assets/fonts;assets/fonts" --name equip-sync-l main.py
 
       - name: Rename artifact (버전 포함)
         shell: pwsh
