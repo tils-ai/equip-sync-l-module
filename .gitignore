@@ -14,11 +14,17 @@ build/
 dist/
 
 # 사용자 런타임 산출물 (config.py가 자동 생성)
-watcher/config.ini
+config.ini
 
 # DRYRUN 미리보기 출력
-watcher/preview/
+preview/
 
 # 로그
-watcher/logs/
+logs/
 *.log
+
+# 런타임 입출력 폴더 (config.py가 자동 생성)
+incoming/
+processing/
+done/
+error/

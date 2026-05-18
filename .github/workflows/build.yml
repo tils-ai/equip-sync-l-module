@@ -11,9 +11,6 @@ permissions:
 jobs:
   build:
     runs-on: windows-latest
-    defaults:
-      run:
-        working-directory: watcher
 
     steps:
       - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
@@ -26,7 +23,6 @@ jobs:
       - name: Install poppler via MSYS2
         id: poppler
         shell: pwsh
-        working-directory: .
         run: |
           C:\msys64\usr\bin\pacman.exe -S --noconfirm mingw-w64-x86_64-poppler
           $popplerBin = "C:\msys64\mingw64\bin"
@@ -40,14 +36,14 @@ jobs:
         run: pip install -r requirements.txt
 
       - name: Build exe
-        run: pyinstaller --onefile --windowed --hidden-import=win32print --hidden-import=win32ui --hidden-import=win32api --hidden-import=requests --hidden-import=urllib3 --hidden-import=certifi --hidden-import=charset_normalizer --hidden-import=idna --collect-all customtkinter --collect-submodules watcher --add-data "${{ steps.poppler.outputs.bin }};poppler" --add-data "assets/fonts;assets/fonts" --name equip-sync-l main.py
+        run: pyinstaller --onefile --windowed --hidden-import=win32print --hidden-import=win32ui --hidden-import=win32api --hidden-import=requests --hidden-import=urllib3 --hidden-import=certifi --hidden-import=charset_normalizer --hidden-import=idna --collect-all customtkinter --collect-submodules gui --add-data "${{ steps.poppler.outputs.bin }};poppler" --add-data "assets/fonts;assets/fonts" --name equip-sync-l main.py
 
       - name: Rename artifact (버전 포함)
         shell: pwsh
         run: |
           $name = "equip-sync-l-${{ github.ref_name }}.exe"
           Rename-Item -Path "dist/equip-sync-l.exe" -NewName $name
-          echo "ARTIFACT=watcher/dist/$name" >> $env:GITHUB_ENV
+          echo "ARTIFACT=dist/$name" >> $env:GITHUB_ENV
 
       - name: Create Release
         uses: softprops/action-gh-release@da05d552573ad5aba039eaac05058a918a7bf631 # v2.3.2
