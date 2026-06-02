@@ -279,6 +279,19 @@ def _build_single(
             y = draw_dashed_line(y)
             y += section_pad
 
+    # === 담당자 (counter 포맷, 고객용 사본 수기 기입란) ===
+    # 서버가 staffNameField=True로 내려준 경우에만, 고객용/단일 사본에 빈 칸 렌더
+    if receipt.get("staffNameField", False) and copy_label != "매장용":
+        draw.text((margin, y), "담당자", fill=_GRAY, font=font_small)
+        y += text_height("담당자", font_small) + int(6 * scale)
+        staff_line_y = y + int(48 * scale)
+        draw_thin_line(staff_line_y)
+        y = staff_line_y + section_pad
+
+        y += section_pad
+        y = draw_dashed_line(y)
+        y += section_pad
+
     # === 예상 소요시간 (수기 기입란) ===
     draw.text((margin, y), "예상 소요시간", fill=_GRAY, font=font_small)
     y += text_height("예상 소요시간", font_small) + int(6 * scale)
