@@ -88,6 +88,37 @@ def _format_date(iso_str: str) -> str:
         return iso_str
 
 
+_qr_warned = False
+
+
+def _make_qr_image(url: str, size_px: int):
+    """주문 상세 QR을 PIL Image로 생성.
+
+    qrcode 라이브러리는 선택적 의존성 — 미설치/생성 실패 시 None을 반환하고
+    접수증은 QR 없이 정상 출력된다. (런타임 import로 모듈 로드 자체는 깨지지 않음)
+    """
+    global _qr_warned
+    if not url:
+        return None
+    try:
+        import qrcode  # 선택적 의존성
+
+        qr = qrcode.QRCode(
+            border=1,
+            box_size=10,
+            error_correction=qrcode.constants.ERROR_CORRECT_M,
+        )
+        qr.add_data(url)
+        qr.make(fit=True)
+        img = qr.make_image(fill_color="black", back_color="white").convert("RGB")
+        return img.resize((size_px, size_px), Image.NEAREST)
+    except Exception:
+        if not _qr_warned:
+            logger.warning("QR 코드 생성 불가(qrcode 미설치 또는 오류) — QR 없이 접수증 출력")
+            _qr_warned = True
+        return None
+
+
 def build_receipt_images(
     receipt: dict,
     printer_dpi: int = 203,
@@ -302,6 +333,20 @@ def _build_single(
     y += section_pad
     y = draw_dashed_line(y)
     y += section_pad
+
+    # === 주문 상세 QR (고객용 사본에만) ===
+    qr_url = receipt.get("qrUrl")
+    if qr_url and copy_label != "매장용":
+        qr_size = int(150 * scale)
+        qr_img = _make_qr_image(qr_url, qr_size)
+        if qr_img is not None:
+            qr_x = (width_px - qr_size) // 2
+            img.paste(qr_img, (qr_x, int(y)))
+            y += qr_size + int(6 * scale)
+            y = draw_center("QR을 스캔해 주문 상세를 확인하세요", font_small, y, fill=_GRAY)
+            y += section_pad
+            y = draw_dashed_line(y)
+            y += section_pad
 
     # === 출력 시각 ===
     now = datetime.now().strftime("%Y. %m. %d. %H:%M")
